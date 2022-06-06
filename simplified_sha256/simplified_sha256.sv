@@ -7,29 +7,22 @@ module simplified_sha256 #(parameter integer NUM_OF_WORDS = 20)(
  input logic [31:0] mem_read_data);
 
 // FSM state variables 
-enum logic [2:0] {IDLE, REST, READ, BLOCK, COMPUTE, BUFFER, WRITE} state;
+enum logic [3:0] {IDLE, REST, READ, BLOCK1, BLOCK2, PIPE_A, PIPE_B, PIPE_C, PIPE_D, COMPUTE_1, COMPUTE_2, BUFFER, WRITE} state;
 
 // NOTE : Below mentioned frame work is for reference purpose.
 // Local variables might not be complete and you might have to add more variables
 // or modify these variables. Code below is more as a reference.
 
 // Local variables
-logic [31:0] w[64];
-logic [31:0] message[NUM_OF_WORDS*5];
-logic [31:0] wt;
-logic [31:0] h0, h1, h2, h3, h4, h5, h6, h7;
-logic [31:0] a, b, c, d, e, f, g, h;
-logic [ 7:0] i, j;
-logic [15:0] offset;
-logic [ 7:0] num_blocks;
+logic [31:0] w[16];
+logic [31:0] message[4];
+logic [31:0] h[8];
+logic [31:0] a, b, c, d, e, f, g, hash, P;
+logic [ 6:0] num;
+logic [ 4:0] offset; // in word address
 logic        cur_we;
 logic [15:0] cur_addr;
 logic [31:0] cur_write_data;
-logic [ 7:0] tstep;
-logic [15:0] temp_write_addr;
-logic [31:0] Su0, Su1;
-logic [255:0] hash;
-logic [31:0] sha_temp[8];
 
 // SHA256 K constants
 parameter int k[0:63] = '{
@@ -44,39 +37,26 @@ parameter int k[0:63] = '{
 };
 
 
-assign num_blocks = determine_num_blocks(NUM_OF_WORDS); 
-assign tstep = (i - 1);
-
-// Note : Function defined are for reference purpose. Feel free to add more functions or modify below.
-// Function to determine number of blocks in memory to fetch
-function logic [15:0] determine_num_blocks(input logic [31:0] size);
-begin
-  determine_num_blocks = (((size >> 4) << 4) == size) ? size >> 4 : (size >> 4) + 1 ;
-end
-endfunction
-
-
 // SHA256 hash round
-function logic [255:0] sha256_op(input logic [31:0] a, b, c, d, e, f, g, h, w,
-                                 input logic [7:0] t);
+function logic [255:0] sha256_op(input logic [31:0] a, b, c, d, e, f, g, P);
     logic [31:0] S1, S0, ch, maj, t1, t2; // internal signals
-begin
-    S1 = rightrotate(e, 6) ^ rightrotate(e, 11) ^ rightrotate(e, 25);
-	 ch =  (e & f) ^ ((~e) & g);
-    t1 = k[t] + S1 + w + h + ch ;
-    S0 = rightrotate(a, 2) ^ rightrotate(a, 13) ^ rightrotate(a, 22);
-    maj = (a & b) ^ (b & c) ^ (c & a) ;
-    t2 = maj + S0 ;
-    sha256_op = {t1 + t2, a, b, c, d + t1, e, f, g};
-end
+	begin
+		S1 = rightrotate(e, 6) ^ rightrotate(e, 11) ^ rightrotate(e, 25);
+		ch = (e & f) ^ ((~e) & g);
+		t1 = S1 + ch + P;
+		S0 = rightrotate(a, 2) ^ rightrotate(a, 13) ^ rightrotate(a, 22);
+		maj = (a & b) ^ (a & c) ^ (b & c);
+		t2 = S0 + maj;
+		sha256_op = {t1 + t2, a, b, c, d + t1, e, f, g};
+	end
 endfunction
 
-function logic [31:0] wtnew(input logic [31:0] w15, w2, w16, w7);
+function logic [31:0] wtnew;
 	logic [31:0] S1, S0;
 	begin
-		S0 = rightrotate(w15, 7) ^ rightrotate(w15, 18) ^ (w15 >> 3);
-		S1 = rightrotate(w2, 17) ^ rightrotate(w2, 19) ^ (w2 >> 10);
-		wtnew = w16 + S0 + w7 + S1;
+		S0 = rightrotate(w[1], 7) ^ rightrotate(w[1], 18) ^ (w[1] >> 3);
+		S1 = rightrotate(w[14], 17) ^ rightrotate(w[14], 19) ^ (w[14] >> 10);
+		wtnew = w[0] + S0 + w[9] + S1;
 	end
 endfunction	
 // Generate request to memory
@@ -105,33 +85,20 @@ begin
     state <= IDLE;
   end 
   else case (state)
-    // Initialize hash values h0 to h7 and a to h, other variables and memory we, address offset, etc
     IDLE: begin 
        if(start) begin
-			h0 <= 32'h6a09e667;
-			h1 <= 32'hbb67ae85;
-			h2 <= 32'h3c6ef372;
-			h3 <= 32'ha54ff53a;
-			h4 <= 32'h510e527f;
-			h5 <= 32'h9b05688c;
-			h6 <= 32'h1f83d9ab;
-			h7 <= 32'h5be0cd19; 
-			
-			a <= 32'h6a09e667;
-			b <= 32'hbb67ae85;
-			c <= 32'h3c6ef372;
-			d <= 32'ha54ff53a;
-			e <= 32'h510e527f;
-			f <= 32'h9b05688c;
-			g <= 32'h1f83d9ab;
-			h <= 32'h5be0cd19; 
-			
+			h[0] <= 32'h6a09e667;
+			h[1] <= 32'hbb67ae85;
+			h[2] <= 32'h3c6ef372;
+			h[3] <= 32'ha54ff53a;
+			h[4] <= 32'h510e527f;
+			h[5] <= 32'h9b05688c;
+			h[6] <= 32'h1f83d9ab;
+			h[7] <= 32'h5be0cd19; 	
 			cur_addr <= message_addr;
-			temp_write_addr <= output_addr;
 			cur_we <= 1'b0;
-			offset <= 16'b0;
-			i <= 8'b0;
-			j <= 8'b0;
+			offset <= 5'b0;
+			num <= 7'b0;
 			state <= REST;
        end
     end
@@ -141,118 +108,140 @@ begin
     end 
 	 
 	  READ: begin
-		if(offset < (num_blocks * 16)) begin
-			if(offset < NUM_OF_WORDS) 
-				begin
-					message[offset] <= mem_read_data;
+			if(offset < NUM_OF_WORDS) begin
+				if(offset < 16) begin
+					w[offset] <= mem_read_data;
 					offset <= offset + 1;
 					state <= REST;
 				end
-			else begin
-				if(offset == NUM_OF_WORDS) begin
-					message[offset] <= 32'h80000000;
-				end
-				else if(offset == ((num_blocks * 16)-1)) begin
-					message[offset] <= 32*NUM_OF_WORDS;
-				end
 				else begin
-					message[offset] <= 32'h0;
-				end
-				offset <= offset + 1;
-				state <= READ;
+					message[offset - 16] <= mem_read_data;
+					offset <= offset + 1;
+					state <= REST;
+			  end 
 			end
-		end				
-		else begin
-			offset <= 0;
-			i <= 0;
-			state <=BLOCK;
+			else begin		
+				offset <= 0;
+				state <=BLOCK1;	
+			end
+		end			
+		
+		BLOCK1: begin
+			a <= h[0];
+			b <= h[1];
+			c <= h[2];
+			d <= h[3];
+			e <= h[4];
+			f <= h[5];
+			g <= h[6];
+			hash <= h[7];
+			state <= PIPE_A;
 		end
-	end
-    // SHA-256 FSM 
-    // Get a BLOCK from the memory, COMPUTE Hash output using SHA256 function    
-    // and write back hash value back to memory
-    BLOCK: begin
-	// Fetch message in 512-bit block size
-	// For each of 512-bit block initiate hash value computation
-			if(j < num_blocks) begin
-				if(i<64) begin
-					if(i<16) begin
-						w[i] <= message[i + j*16];
-						i <= i + 1;
-						state <= BLOCK;
-					end
-					else begin
-						w[i] <= wtnew(w[i-15], w[i-2], w[i-16], w[i-7]);
-						i <= i + 1;
-						state <= BLOCK;
-					end
-				end
-				else begin
-					i <= 0;
-					j <= j + 1;
-					state <= COMPUTE;
-				end
-			end
-			else begin
-				state <= BUFFER;
-			end
-    end
-
-    // For each block compute hash function
-    // Go back to BLOCK stage after each block hash computation is completed and if
-    // there are still number of message blocks available in memory otherwtnewse
-    // move to WRITE stage
-    COMPUTE: begin
-	// 64 processing rounds steps for 512-bit block 
-        if (i < 64) begin
-				{a, b, c, d, e, f, g, h} <= sha256_op(a,b,c,d,e,f,g,h,w[i],i);;
-				i <= i + 1;
-				state <= COMPUTE;
-		 end
-		 else begin
-		 h0 <= a + h0;
-		 h1 <= b + h1;
-		 h2 <= c + h2;
-		 h3 <= d + h3;
-		 h4 <= e + h4;
-		 h5 <= f + h5;
-		 h6 <= g + h6;
-		 h7 <= h + h7;
-		 
-		 a <= a + h0;
-		 b <= b + h1;
-		 c <= c + h2;
-		 d <= d + h3;
-		 e <= e + h4;
-		 f <= f + h5;
-		 g <= g + h6;
-		 h <= h + h7;
-		 i <= 0;
-		 state <= BLOCK;
-     end
-    end
+	
+	 PIPE_A: begin
+			P <= w[0] + k[0] + hash;
+			for(int n=0; n<15; n++) w[n] <= w[n + 1];
+			w[15] <= wtnew;
+			state <= PIPE_B;
+	 end
 	 
-	 BUFFER:begin
-			sha_temp[0] <= h0;
-			sha_temp[1] <= h1;
-			sha_temp[2] <= h2;
-			sha_temp[3] <= h3;
-			sha_temp[4] <= h4;
-			sha_temp[5] <= h5;
-			sha_temp[6] <= h6;
-			sha_temp[7] <= h7;
-			cur_we <= 1;
-			cur_addr <= temp_write_addr;
-			cur_write_data <= h0;
-			state <= WRITE;
+	 PIPE_B: begin
+		{a, b, c, d, e, f, g, hash} <= sha256_op(a,b,c,d,e,f,g, P);
+		P <= w[0] + k[1] + g;
+		for(int n=0; n<15; n++) w[n] <= w[n + 1];
+		w[15] <= wtnew;
+		num <= num+1;
+		state <= COMPUTE_1;
+	 end
+	 
+	 COMPUTE_1: begin
+		if(num < 64) begin
+			P <= w[0] + k[num+1] + g;
+			{a, b, c, d, e, f, g, hash} <= sha256_op(a,b,c,d,e,f,g,P);
+			for(int j=0;j<15;j++) w[j] <= w[j+1];
+			w[15] <= wtnew;
+			num <= num + 1;
+			state <= COMPUTE_1;
+		end
+	   else begin
+		 h[0] <= a + h[0];
+		 h[1] <= b + h[1];
+		 h[2] <= c + h[2];
+		 h[3] <= d + h[3];
+		 h[4] <= e + h[4];
+		 h[5] <= f + h[5];
+		 h[6] <= g + h[6];
+		 h[7] <= hash + h[7];
+		 num <= 0;
+		 state <= BLOCK2;
+     end
+	 end
+	 
+	 BLOCK2: begin
+			a <= h[0];
+			b <= h[1];
+			c <= h[2];
+			d <= h[3];
+			e <= h[4];
+			f <= h[5];
+			g <= h[6];
+			hash <= h[7];
+			
+			for(int n=0; n<4; n++) w[n] <= message[n];
+			w[4] <= 32'h80000000;
+			w[15] <= 32'd640;
+			for(int j=5; j<15; j++) w[j] <= 32'h0;
+			state <= PIPE_C;
+		end
+	 
+	 PIPE_C: begin
+			P <= w[0] + k[0] + hash;
+			for(int n=0; n<15; n++) w[n] <= w[n + 1];
+			w[15] <= wtnew;
+			state <= PIPE_D;
+	 end
+	 
+	 PIPE_D: begin
+		{a, b, c, d, e, f, g, hash} <= sha256_op(a,b,c,d,e,f,g, P);
+		P <= w[0] + k[1] + g;
+		for(int n=0; n<15; n++) w[n] <= w[n + 1];
+		w[15] <= wtnew;
+		num <= num+1;
+		state <= COMPUTE_2;
+	 end
+	 
+	 COMPUTE_2: begin
+		if(num < 64) begin
+			P <= w[0] + k[num+1] + g;
+			{a, b, c, d, e, f, g, hash} <= sha256_op(a,b,c,d,e,f,g,P);
+			for(int j=0;j<15;j++) w[j] <= w[j+1];
+			w[15] <= wtnew;
+			num <= num + 1;
+			state <= COMPUTE_2;
+		end
+	   else begin
+		 h[0] <= a + h[0];
+		 h[1] <= b + h[1];
+		 h[2] <= c + h[2];
+		 h[3] <= d + h[3];
+		 h[4] <= e + h[4];
+		 h[5] <= f + h[5];
+		 h[6] <= g + h[6];
+		 h[7] <= hash + h[7];
+		 num <= 0;
+		 state <= BUFFER;
+     end
 	 end
 
-    // h0 to h7 each are 32 bit hashes, which makes up total 256 bit value
-    // h0 to h7 after compute stage has final computed hash value
-    // write back these h0 to h7 to memory starting from output_addr
+	 BUFFER: begin
+		cur_we <= 1;
+		cur_addr <= output_addr;
+		cur_write_data <= h[0];
+		state <= WRITE;
+	 end
     WRITE: begin
 		if(offset < 8)begin
-			cur_write_data <= sha_temp[offset+1];
+			cur_write_data <= h[offset+1];
 			offset <= offset + 1;
 			state <= WRITE;
 		end
@@ -263,7 +252,6 @@ begin
    endcase
   end
 
-// Generate done when SHA256 hash computation has finished and moved to IDLE state
 assign done = (state == IDLE);
 
 endmodule

@@ -50,3 +50,8 @@ simplified_sha256/simulation/modelsim/rtl_work/_info
 *.do
 *.tmp
 *.flock
+simplified_sha256/finalsummary.xlsx
+simplified_sha256/simulation/modelsim/simplified_sha256_run_msim_rtl_verilog.do.bak1
+simplified_sha256/simulation/modelsim/simplified_sha256_run_msim_rtl_verilog.do.bak2
+simplified_sha256/simulation/modelsim/vsim.wlf
+simplified_sha256/finalsummary.xlsx
