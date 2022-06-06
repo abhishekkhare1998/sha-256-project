@@ -1,4 +1,4 @@
-`include "simplified_sha256.sv"
+`include "bitcoin_sha256_single.sv"
 
 module bitcoin_hash (input logic        clk, reset_n, start,
                      input logic [15:0] message_addr, output_addr,
@@ -7,25 +7,25 @@ module bitcoin_hash (input logic        clk, reset_n, start,
                     output logic [31:0] mem_write_data,
                      input logic [31:0] mem_read_data);
 
-parameter num_nonces = 16;
 
-enum logic [ 3:0] {IDLE, REST, READ, START1, BUFFER1, START2, BUFFER2, START3, BUFFER3, START4, BUFFER4, START5, BUFFER5, WRITE}state;
+enum logic [ 3:0] {IDLE, DELAY,READ_ONE,DELAY2,READ_TWO,PHASE1, BUFFER1, PHASE2, BUFFER2, PHASE3, BUFFER3, PHASE2_FINAL, BUFFER4, PHASE3_FINAL, BUFFER5, WRITE}state;
 logic [31:0] w0[16], w1[16], w2[16],w3[16],w4[16],w5[16],w6[16],w7[16];
-logic [31:0] message[32];
-logic [31:0] h[8], ho[8], ho20[8], ho21[8], ho22[8], ho23[8], ho24[8], ho25[8], ho26[8], ho27[8];
-logic [31:0] ho30[8], ho31[8], ho32[8], ho33[8], ho34[8], ho35[8], ho36[8], ho37[8], ho38[8];
-logic [31:0] h0[16];
-logic [ 6:0] num;
+logic [31:0] block1[16];
+logic [31:0] block2[16];
+logic [31:0] h[8], ho[8], phase2_0hash[8], phase2_1hash[8], phase2_2hash[8], phase2_3hash[8], phase2_4hash[8], phase2_5hash[8], phase2_6hash[8], phase2_7hash[8];
+logic [31:0] phase3_0hash[8], phase3_1hash[8], phase3_2hash[8], phase3_3hash[8], phase3_4hash[8], phase3_5hash[8], phase3_6hash[8], phase3_7hash[8], phase3_8hash[8];
+logic [31:0] output_hash[16];
+logic [ 6:0] count;
 logic [ 4:0] offset; 
-logic        cur_we;
-logic [15:0] cur_addr;
+logic        temp_we;
+logic [15:0] ptr;
 logic [31:0] cur_write_data;
 logic start_1, start_2, start_3;
 logic done_0, done_20, done_30, done_1, done_2, done_3, done_4, done_5, done_6, done_7,done_31,done_32,done_33,done_34,done_35,done_36,done_37;
-
+//logic[15:0] initial_nonce;
 assign mem_clk = clk;
-assign mem_addr = cur_addr + offset;
-assign mem_we = cur_we;
+assign mem_addr = ptr + offset;
+assign mem_we = temp_we;
 assign mem_write_data = cur_write_data;
 
 logic [31:0] k[0:63] = '{
@@ -41,11 +41,13 @@ logic [31:0] k[0:63] = '{
 always_ff @(posedge clk, negedge reset_n)
 begin
   if (!reset_n) begin
-    cur_we <= 1'b0;
+    temp_we <= 1'b0;
     state <= IDLE;
   end 
   else case (state)
    IDLE: begin 
+   		 								 	$display(state);
+
        if(start) begin
 			h[0] <= 32'h6a09e667;
 			h[1] <= 32'hbb67ae85;
@@ -55,63 +57,131 @@ begin
 			h[5] <= 32'h9b05688c;
 			h[6] <= 32'h1f83d9ab;
 			h[7] <= 32'h5be0cd19; 	
-			cur_addr <= message_addr;
-			cur_we <= 1'b0;
+			ptr <= message_addr;
+			temp_we <= 1'b0;
 			offset <= 5'b0;
-			num <= 7'b0;
+			count <= 7'b0;
 			
 			start_1 <= 0;	
 			start_2 <= 0;	
 			
-			state <= REST;
+			state <= DELAY;
        end
     end
 
-	 REST:begin
-		state <= READ;
+	 DELAY:begin
+		state <= READ_ONE;
     end 
 	 
-	  READ: begin
-			if(offset < 19) 
-				begin
-					message[offset] <= mem_read_data;
+	  READ_ONE: begin//1
+	  		 								 	$display(state);
+
+	  	//if(offset < 32)
+	  	//begin//2
+			if(offset < 16) 
+				begin//3
+						  		 								 	$display(16);
+
+					block1[offset] <= mem_read_data;
 					offset <= offset + 1;
-					state <= REST;
-				end
-			else begin
-				for(int n=0; n<16; n++) w0[n] <= message[n];
+					state <= DELAY;
+				end//2
+			else begin//3
+				//if(offset <)
+					for(int n=0; n<16; n++) w0[n] <= block1[n];
+					state<= DELAY2;
+				/*for(int n=0; n<16; n++) w0[n] <= message[n];
 				message[20] <= 32'h80000000;
 				message[31] <= 32'd640;
 				for(int n = 21; n<31; n++) message[n] <= 32'h0;
 				offset <= 0;
-				state <=START1;	
+				state <=START1;	*/
+			end//1
+		end//0
+		DELAY2:begin
+		state <= READ_TWO;
+    end
+		READ_TWO: begin
+				  		 								 	$display(state);
+
+			if(offset < 20)
+				begin		
+				$display(20);
+				block2[offset-16] <= mem_read_data;
+				offset<= offset +1;
+				state<= DELAY2;
 			end
-		end			
+			else
+				begin
+					block2[4] = 32'h80000000;
+					block2[15] = 32'd640;
+					for (int i = 21; i < 31; i++) begin
+						block2[i-16] = 32'h0;
+					end
+					offset <= 0;
+					state<= PHASE1;
+				end
+			end
 		
-		
-    START1: begin
+    PHASE1: begin
+    		 								 	$display("This is  %p", block1);
+    		 								 	    		 								 	$display("This is  %p", block2);
+
+    		 								 	
+
 				start_1 <= 1;
-				num <= num + 1;
+				count <= count + 1;
 				state <= BUFFER1;
     end
 
 	 BUFFER1: begin
-		if(num < 3) begin
-			num <= num + 1;
+	 		 								 	$display(state);
+
+		if(count < 3) begin
+			count <= count + 1;
 			state <= BUFFER1;
 		end
 		else begin
 		start_1 <= 0;
 		if(done_0) begin
-			num <= 0;
-			for(int n=0;n<3;n++) w0[n] <= message[n+16];
-			for(int n=0;n<3;n++) w1[n] <= message[n+16];
-			for(int n=0;n<3;n++) w2[n] <= message[n+16];
-			for(int n=0;n<3;n++) w3[n] <= message[n+16];
-			for(int n=0;n<3;n++) w4[n] <= message[n+16];
-			for(int n=0;n<3;n++) w5[n] <= message[n+16];
-			for(int n=0;n<3;n++) w6[n] <= message[n+16];
-			for(int n=0;n<3;n++) w7[n] <= message[n+16];
+			count <= 0;
+			for(int k = 0 ;k<16;k++)
+			begin
+				if(k == 3)
+					begin
+				w0[3] <= 32'd0;
+			  w1[3] <= 32'd1;
+				w2[3] <= 32'd2;
+				w3[3] <= 32'd3;
+				w4[3] <= 32'd4;
+				w5[3] <= 32'd5;
+				w6[3] <= 32'd6;
+				w7[3] <= 32'd7;
+					end
+					else
+						begin
+				w1[k] <= block2[k];
+				w2[k] <= block2[k];
+				w3[k] <= block2[k];
+				w4[k] <= block2[k];
+				w5[k] <= block2[k];
+				w6[k] <= block2[k];
+				w7[k] <= block2[k];
+				w0[k] <= block2[k];
+						end
+				
+				
+
+			end
+			 
+			/*for(int n=0;n<3;n++) w0[n] <= block2[n];
+			for(int n=0;n<3;n++) w1[n] <= block2[n];
+			for(int n=0;n<3;n++) w2[n] <= block2[n];
+			for(int n=0;n<3;n++) w3[n] <= block2[n];
+			for(int n=0;n<3;n++) w4[n] <= block2[n];
+			for(int n=0;n<3;n++) w5[n] <= block2[n];
+			for(int n=0;n<3;n++) w6[n] <= block2[n];
+			for(int n=0;n<3;n++) w7[n] <= block2[n];
 			w0[3] <= 32'd0;
 			w1[3] <= 32'd1;
 			w2[3] <= 32'd2;
@@ -127,39 +197,92 @@ begin
 			for(int n=4;n<16;n++) w4[n] <= message[n+16];
 			for(int n=4;n<16;n++) w5[n] <= message[n+16];
 			for(int n=4;n<16;n++) w6[n] <= message[n+16];
-			for(int n=4;n<16;n++) w7[n] <= message[n+16];
-			state <= START2;
+			for(int n=4;n<16;n++) w7[n] <= message[n+16];*/
+			state <= PHASE2;
 		end
 		else begin
+
 			state <= BUFFER1;
 		end
 		end
 	end
 	
-	START2: begin
+	PHASE2: begin
+		$display(block1,block2);
 			start_2 <= 1;
-			num <= num + 1;
+			count <= count + 1;
 			state <= BUFFER2;
     end
 
 	 BUFFER2: begin
-		if(num < 3) begin
-			num <= num + 1;
+	 								 	$display(state);
+
+		if(count < 3) begin
+			count <= count + 1;
 			state <= BUFFER2;
 		end
 		else begin
 		start_2 <= 0;
 		if(done_20) begin
-			num <= 0;
-			for(int n=0;n<8;n++) w0[n] <= ho20[n];
-			for(int n=0;n<8;n++) w1[n] <= ho21[n];
-			for(int n=0;n<8;n++) w2[n] <= ho22[n];
-			for(int n=0;n<8;n++) w3[n] <= ho23[n];
-			for(int n=0;n<8;n++) w4[n] <= ho24[n];
-			for(int n=0;n<8;n++) w5[n] <= ho25[n];
-			for(int n=0;n<8;n++) w6[n] <= ho26[n];
-			for(int n=0;n<8;n++) w7[n] <= ho27[n];
+			count <= 0;
+			for(int k = 0 ;k<16;k++)
+			begin
+				if(k == 8)
+					begin
 			w0[8] <= 32'h80000000;
+			w1[8] <= 32'h80000000;
+			w2[8] <= 32'h80000000;
+			w3[8] <= 32'h80000000;
+			w4[8] <= 32'h80000000;
+			w5[8] <= 32'h80000000;
+			w6[8] <= 32'h80000000;
+			w7[8] <= 32'h80000000;
+					end
+					else
+					if (k == 15) begin
+				w0[15] <= 32'd256;
+			w1[15] <= 32'd256;
+			w2[15] <= 32'd256;
+			w3[15] <= 32'd256;
+			w4[15] <= 32'd256;
+			w5[15] <= 32'd256;
+			w6[15] <= 32'd256;
+			w7[15] <= 32'd256;
+						end
+					else if (k > 8) begin
+				w0[k] <= 32'h0;
+				w1[k] <= 32'h0;
+				w2[k] <= 32'h0;
+				w3[k] <= 32'h0;
+				w4[k] <= 32'h0;
+				w5[k] <= 32'h0;
+				w6[k] <= 32'h0;
+				w7[k] <= 32'h0;
+					end
+				else
+				begin
+				w1[k] <= phase2_1hash[k];
+				w2[k] <= phase2_2hash[k];
+				w3[k] <= phase2_3hash[k];
+				w4[k] <= phase2_4hash[k];
+				w5[k] <= phase2_5hash[k];
+				w6[k] <= phase2_6hash[k];
+				w7[k] <= phase2_7hash[k];
+				w0[k] <= phase2_0hash[k];
+				
+			end
+		end
+					state <= PHASE3;
+
+		/*	for(int n=0;n<8;n++) w0[n] <= phase2_0hash[n];
+			for(int n=0;n<8;n++) w1[n] <= phase2_1hash[n];
+			for(int n=0;n<8;n++) w2[n] <= phase2_2hash[n];
+			for(int n=0;n<8;n++) w3[n] <= phase2_3hash[n];
+			for(int n=0;n<8;n++) w4[n] <= phase2_4hash[n];
+			for(int n=0;n<8;n++) w5[n] <= phase2_5hash[n];
+			for(int n=0;n<8;n++) w6[n] <= phase2_6hash[n];
+			for(int n=0;n<8;n++) w7[n] <= phase2_7hash[n];*/
+			/*w0[8] <= 32'h80000000;
 			w1[8] <= 32'h80000000;
 			w2[8] <= 32'h80000000;
 			w3[8] <= 32'h80000000;
@@ -184,8 +307,7 @@ begin
 			w4[15] <= 32'd256;
 			w5[15] <= 32'd256;
 			w6[15] <= 32'd256;
-			w7[15] <= 32'd256;
-			state <= START3;
+			w7[15] <= 32'd256;*/
 		end
 		else begin
 			state <= BUFFER2;
@@ -193,22 +315,60 @@ begin
 		end
 	end
 	
-	START3: begin
+	PHASE3: begin
 			start_3 <= 1;
-			num <= num + 1;
+			count <= count + 1;
 			state <= BUFFER3;
     end
 
 	 BUFFER3: begin
-		if(num < 3) begin
-			num <= num + 1;
+	 								 	$display(state);
+
+		if(count < 3) begin
+			count <= count + 1;
 			state <= BUFFER3;
 		end
 		else begin
 		start_3 <= 0;
 		if(done_30) begin
-			num <= 0;
-			for(int n=0;n<3;n++) w0[n] <= message[n+16];
+			count <= 0;
+			for(int k = 0 ;k<16;k++)
+			begin
+				if(k == 3)
+					begin
+						w0[3] <= 32'd8;
+			  w1[3] <= 32'd9;
+				w2[3] <= 32'd10;
+				w3[3] <= 32'd11;
+				w4[3] <= 32'd12;
+				w5[3] <= 32'd13;
+				w6[3] <= 32'd14;
+				w7[3] <= 32'd15;
+					end
+					else
+						begin
+				w1[k] <= block2[k];
+				w2[k] <= block2[k];
+				w3[k] <= block2[k];
+				w4[k] <= block2[k];
+				w5[k] <= block2[k];
+				w6[k] <= block2[k];
+				w7[k] <= block2[k];
+				w0[k] <= block2[k];
+						end
+				
+
+
+			end
+			output_hash[0] <= phase3_0hash[0];
+			output_hash[1] <= phase3_1hash[0];
+			output_hash[2] <= phase3_2hash[0];
+			output_hash[3] <= phase3_3hash[0];
+			output_hash[4] <= phase3_4hash[0];
+			output_hash[5] <= phase3_5hash[0];
+			output_hash[6] <= phase3_6hash[0];
+			output_hash[7] <= phase3_7hash[0];
+			/*for(int n=0;n<3;n++) w0[n] <= message[n+16];
 			for(int n=0;n<3;n++) w1[n] <= message[n+16];
 			for(int n=0;n<3;n++) w2[n] <= message[n+16];
 			for(int n=0;n<3;n++) w3[n] <= message[n+16];
@@ -232,16 +392,9 @@ begin
 			for(int n=4;n<16;n++) w5[n] <= message[n+16];
 			for(int n=4;n<16;n++) w6[n] <= message[n+16];
 			for(int n=4;n<16;n++) w7[n] <= message[n+16];
-			h0[0] <= ho30[0];
-			h0[1] <= ho31[0];
-			h0[2] <= ho32[0];
-			h0[3] <= ho33[0];
-			h0[4] <= ho34[0];
-			h0[5] <= ho35[0];
-			h0[6] <= ho36[0];
-			h0[7] <= ho37[0];
+			*/
 			
-			state <= START4;
+			state <= PHASE2_FINAL;
 		end
 		else begin
 			state <= BUFFER3;
@@ -249,56 +402,71 @@ begin
 		end
 	end
 		
-		START4: begin
+		PHASE2_FINAL: begin
 			start_2 <= 1;
-			num <= num + 1;
+			count <= count + 1;
 			state <= BUFFER4;
 		end
 		
 		BUFFER4: begin
-			if(num < 3) begin
-				num <= num + 1;
+							 	$display(state);
+
+			if(count < 3) begin
+				count <= count + 1;
 				state <= BUFFER4;
 			end
 			else begin
 				start_2 <= 0;
 				if(done_20) begin
-					num <= 0;
-					for(int n=0;n<8;n++) w0[n] <= ho20[n];
-					for(int n=0;n<8;n++) w1[n] <= ho21[n];
-					for(int n=0;n<8;n++) w2[n] <= ho22[n];
-					for(int n=0;n<8;n++) w3[n] <= ho23[n];
-					for(int n=0;n<8;n++) w4[n] <= ho24[n];
-					for(int n=0;n<8;n++) w5[n] <= ho25[n];
-					for(int n=0;n<8;n++) w6[n] <= ho26[n];
-					for(int n=0;n<8;n++) w7[n] <= ho27[n];
-					w0[8] <= 32'h80000000;
-					w1[8] <= 32'h80000000;
-					w2[8] <= 32'h80000000;
-					w3[8] <= 32'h80000000;
-					w4[8] <= 32'h80000000;
-					w5[8] <= 32'h80000000;
-					w6[8] <= 32'h80000000;
-					w7[8] <= 32'h80000000;
-					for(int n=9; n<15; n++) begin
-						w0[n] <= 32'h0;
-						w1[n] <= 32'h0;
-						w2[n] <= 32'h0;
-						w3[n] <= 32'h0;
-						w4[n] <= 32'h0;
-						w5[n] <= 32'h0;
-						w6[n] <= 32'h0;
-						w7[n] <= 32'h0;
+					count <= 0;
+				for(int k = 0 ;k<16;k++)
+			begin
+				if(k == 8)
+					begin
+			w0[8] <= 32'h80000000;
+			w1[8] <= 32'h80000000;
+			w2[8] <= 32'h80000000;
+			w3[8] <= 32'h80000000;
+			w4[8] <= 32'h80000000;
+			w5[8] <= 32'h80000000;
+			w6[8] <= 32'h80000000;
+			w7[8] <= 32'h80000000;
 					end
-					w0[15] <= 32'd256;
-					w1[15] <= 32'd256;
-					w2[15] <= 32'd256;
-					w3[15] <= 32'd256;
-					w4[15] <= 32'd256;
-					w5[15] <= 32'd256;
-					w6[15] <= 32'd256;
-					w7[15] <= 32'd256;
-					state <= START5;
+					else
+					if (k == 15) begin
+				w0[15] <= 32'd256;
+			w1[15] <= 32'd256;
+			w2[15] <= 32'd256;
+			w3[15] <= 32'd256;
+			w4[15] <= 32'd256;
+			w5[15] <= 32'd256;
+			w6[15] <= 32'd256;
+			w7[15] <= 32'd256;
+						end
+					else if (k > 8) begin
+				w0[k] <= 32'h0;
+				w1[k] <= 32'h0;
+				w2[k] <= 32'h0;
+				w3[k] <= 32'h0;
+				w4[k] <= 32'h0;
+				w5[k] <= 32'h0;
+				w6[k] <= 32'h0;
+				w7[k] <= 32'h0;
+					end
+				else
+				begin
+				w1[k] <= phase2_1hash[k];
+				w2[k] <= phase2_2hash[k];
+				w3[k] <= phase2_3hash[k];
+				w4[k] <= phase2_4hash[k];
+				w5[k] <= phase2_5hash[k];
+				w6[k] <= phase2_6hash[k];
+				w7[k] <= phase2_7hash[k];
+				w0[k] <= phase2_0hash[k];
+				
+			end
+		end
+					state <= PHASE3_FINAL;
 				end
 				else begin
 					state <= BUFFER4;
@@ -306,33 +474,37 @@ begin
 			end
 		end
 		
-		START5: begin
+		PHASE3_FINAL: begin
+							 	$display(state);
+
 			start_3 <= 1;
-			num <= num + 1;
+			count <= count + 1;
 			state <= BUFFER5;
 		end
 		
 		BUFFER5: begin
-			if(num < 3) begin
-				num <= num + 1;
+				 	$display(state);
+
+			if(count < 3) begin
+				count <= count + 1;
 				state <= BUFFER5;
 			end
 			else begin
 				start_3 <= 0;
 				if(done_30) begin
-					num <= 0;
-					cur_addr <= output_addr;
-					cur_we <= 1'b1;
-					h0[8] <= ho30[0];
-					h0[9] <= ho31[0];
-					h0[10] <= ho32[0];
-					h0[11] <= ho33[0];
-					h0[12] <= ho34[0];
-					h0[13] <= ho35[0];
-					h0[14] <= ho36[0];
-					h0[15] <= ho37[0];
-			
-					cur_write_data <= h0[0];
+					count <= 0;
+					ptr <= output_addr;
+					temp_we <= 1'b1;
+					output_hash[8] <= phase3_0hash[0];
+					output_hash[9] <= phase3_1hash[0];
+					output_hash[10] <= phase3_2hash[0];
+					output_hash[11] <= phase3_3hash[0];
+					output_hash[12] <= phase3_4hash[0];
+					output_hash[13] <= phase3_5hash[0];
+					output_hash[14] <= phase3_6hash[0];
+					output_hash[15] <= phase3_7hash[0];
+
+					cur_write_data <= output_hash[0];
 					state <= WRITE;
 				end
 				else begin
@@ -343,8 +515,9 @@ begin
 					
 		
 	 WRITE: begin
+	 	$display(" we writing now");
 		if(offset < 16)begin
-			cur_write_data <= h0[offset+1];
+			cur_write_data <= output_hash[offset+1];
 			offset <= offset + 1;
 			state <= WRITE;
 		end
@@ -357,191 +530,174 @@ begin
 	
 assign done = (state == IDLE);	
 
-simplified_sha256 sha1 (
+bitcoin_sha256_single sha1 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_1),
 	.message(w0),
-	.in(h),
-	.k(k),
+	.starter_hash(h),
 	.done(done_0),
-	.sha256(ho)
+	.bitcoin_simplified_sha256(ho)
 	);
 
-	simplified_sha256 sha20 (
+	bitcoin_sha256_single sha20 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_2),
 	.message(w0),
-	.in(ho),
-	.k(k),
+	.starter_hash(ho),
 	.done(done_20),
-	.sha256(ho20)
+	.bitcoin_simplified_sha256(phase2_0hash)
 	);
 	
-	simplified_sha256 sha21 (
+	bitcoin_sha256_single sha21 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_2),
 	.message(w1),
-	.in(ho),
-	.k(k),
+	.starter_hash(ho),
 	.done(done_1),
-	.sha256(ho21)
+	.bitcoin_simplified_sha256(phase2_1hash)
 	);
 	
-	simplified_sha256 sha22 (
+	bitcoin_sha256_single sha22 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_2),
 	.message(w2),
-	.in(ho),
-	.k(k),
+	.starter_hash(ho),
 	.done(done_2),
-	.sha256(ho22)
+	.bitcoin_simplified_sha256(phase2_2hash)
 	);
 	
-	simplified_sha256 sha23 (
+	bitcoin_sha256_single sha23 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_2),
 	.message(w3),
-	.in(ho),
-	.k(k),
+	.starter_hash(ho),
 	.done(done_3),
-	.sha256(ho23)
+	.bitcoin_simplified_sha256(phase2_3hash)
 	);
 	
-	simplified_sha256 sha24 (
+	bitcoin_sha256_single sha24 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_2),
 	.message(w4),
-	.in(ho),
-	.k(k),
+	.starter_hash(ho),
 	.done(done_4),
-	.sha256(ho24)
+	.bitcoin_simplified_sha256(phase2_4hash)
 	);
 	
-	simplified_sha256 sha25 (
+	bitcoin_sha256_single sha25 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_2),
 	.message(w5),
-	.in(ho),
-	.k(k),
+	.starter_hash(ho),
 	.done(done_5),
-	.sha256(ho25)
+	.bitcoin_simplified_sha256(phase2_5hash)
 	);
 	
-	simplified_sha256 sha26 (
+	bitcoin_sha256_single sha26 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_2),
 	.message(w6),
-	.in(ho),
-	.k(k),
+	.starter_hash(ho),
 	.done(done_6),
-	.sha256(ho26)
+	.bitcoin_simplified_sha256(phase2_6hash)
 	);
 	
-	simplified_sha256 sha27 (
+	bitcoin_sha256_single sha27 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_2),
 	.message(w7),
-	.in(ho),
-	.k(k),
+	.starter_hash(ho),
 	.done(done_7),
-	.sha256(ho27)
+	.bitcoin_simplified_sha256(phase2_7hash)
 	);
 	
-	simplified_sha256 sha30 (
+	bitcoin_sha256_single sha30 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_3),
 	.message(w0),
-	.in(h),
-	.k(k),
+	.starter_hash(h),
 	.done(done_30),
-	.sha256(ho30)
+	.bitcoin_simplified_sha256(phase3_0hash)
 	);
 	
-	simplified_sha256 sha31 (
+	bitcoin_sha256_single sha31 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_3),
 	.message(w1),
-	.in(h),
-	.k(k),
+	.starter_hash(h),
 	.done(done_31),
-	.sha256(ho31)
+	.bitcoin_simplified_sha256(phase3_1hash)
 	);
 	
-	simplified_sha256 sha32 (
+	bitcoin_sha256_single sha32 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_3),
 	.message(w2),
-	.in(h),
-	.k(k),
+	.starter_hash(h),
 	.done(done_32),
-	.sha256(ho32)
+	.bitcoin_simplified_sha256(phase3_2hash)
 	);
 	
-	simplified_sha256 sha33 (
+	bitcoin_sha256_single sha33 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_3),
 	.message(w3),
-	.in(h),
-	.k(k),
+	.starter_hash(h),
 	.done(done_33),
-	.sha256(ho33)
+	.bitcoin_simplified_sha256(phase3_3hash)
 	);
 	
-	simplified_sha256 sha34 (
+	bitcoin_sha256_single sha34 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_3),
 	.message(w4),
-	.in(h),
-	.k(k),
+	.starter_hash(h),
 	.done(done_34),
-	.sha256(ho34)
+	.bitcoin_simplified_sha256(phase3_4hash)
 	);
 	
-	simplified_sha256 sha35 (
+	bitcoin_sha256_single sha35 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_3),
 	.message(w5),
-	.in(h),
-	.k(k),
+	.starter_hash(h),
 	.done(done_35),
-	.sha256(ho35)
+	.bitcoin_simplified_sha256(phase3_5hash)
 	);
 	
-	simplified_sha256 sha36 (
+	bitcoin_sha256_single sha36 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_3),
 	.message(w6),
-	.in(h),
-	.k(k),
+	.starter_hash(h),
 	.done(done_36),
-	.sha256(ho36)
+	.bitcoin_simplified_sha256(phase3_6hash)
 	);
 	
-	simplified_sha256 sha37 (
+	bitcoin_sha256_single sha37 (
 	.clk(clk),
 	.reset_n(reset_n),
 	.start(start_3),
 	.message(w7),
-	.in(h),
-	.k(k),
+	.starter_hash(h),
 	.done(done_37),
-	.sha256(ho37)
+	.bitcoin_simplified_sha256(phase3_7hash)
 	);
 	
 	
