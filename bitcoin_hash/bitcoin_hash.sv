@@ -46,7 +46,7 @@ begin
   end 
   else case (state)
    IDLE: begin 
-   		 								 	$display(state);
+   		 								 	
 
        if(start) begin
 			h[0] <= 32'h6a09e667;
@@ -74,13 +74,13 @@ begin
     end 
 	 
 	  READ_ONE: begin//1
-	  		 								 	$display(state);
+	  		 								 	
 
 	  	//if(offset < 32)
 	  	//begin//2
 			if(offset < 16) 
 				begin//3
-						  		 								 	$display(16);
+						  		 								 	
 
 					block1[offset] <= mem_read_data;
 					offset <= offset + 1;
@@ -102,11 +102,11 @@ begin
 		state <= READ_TWO;
     end
 		READ_TWO: begin
-				  		 								 	$display(state);
+				  		 								 	
 
 			if(offset < 20)
 				begin		
-				$display(20);
+				
 				block2[offset-16] <= mem_read_data;
 				offset<= offset +1;
 				state<= DELAY2;
@@ -124,9 +124,7 @@ begin
 			end
 		
     PHASE1: begin
-    		 								 	$display("This is  %p", block1);
-    		 								 	    		 								 	$display("This is  %p", block2);
-
+    		 								 	
     		 								 	
 
 				start_1 <= 1;
@@ -135,7 +133,6 @@ begin
     end
 
 	 BUFFER1: begin
-	 		 								 	$display(state);
 
 		if(count < 3) begin
 			count <= count + 1;
@@ -208,14 +205,12 @@ begin
 	end
 	
 	PHASE2: begin
-		$display(block1,block2);
 			start_2 <= 1;
 			count <= count + 1;
 			state <= BUFFER2;
     end
 
 	 BUFFER2: begin
-	 								 	$display(state);
 
 		if(count < 3) begin
 			count <= count + 1;
@@ -322,7 +317,6 @@ begin
     end
 
 	 BUFFER3: begin
-	 								 	$display(state);
 
 		if(count < 3) begin
 			count <= count + 1;
@@ -409,7 +403,6 @@ begin
 		end
 		
 		BUFFER4: begin
-							 	$display(state);
 
 			if(count < 3) begin
 				count <= count + 1;
@@ -475,7 +468,6 @@ begin
 		end
 		
 		PHASE3_FINAL: begin
-							 	$display(state);
 
 			start_3 <= 1;
 			count <= count + 1;
@@ -483,7 +475,6 @@ begin
 		end
 		
 		BUFFER5: begin
-				 	$display(state);
 
 			if(count < 3) begin
 				count <= count + 1;
@@ -515,7 +506,6 @@ begin
 					
 		
 	 WRITE: begin
-	 	$display(" we writing now");
 		if(offset < 16)begin
 			cur_write_data <= output_hash[offset+1];
 			offset <= offset + 1;
