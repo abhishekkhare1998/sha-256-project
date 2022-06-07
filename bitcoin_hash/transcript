@@ -1,0 +1,155 @@
+vsim -gui work.tb_bitcoin_hash
+# vsim -gui work.tb_bitcoin_hash 
+# Start time: 13:30:58 on Jun 06,2022
+# Loading sv_std.std
+# Loading work.tb_bitcoin_hash
+# Loading work.bitcoin_hash
+# Loading work.bitcoin_sha256_single
+# internal error on MenuItemCan
+# m is .mBar.file label is Close Project state is disabled
+#  Trace back: 
+#    <5:eval:1: ::Vsimmenu::MenuItemCan .mBar.file {Close Project} disabled
+#    >4:proc:1607: ::.main_pane.wave.interior.cs.body.pw.wf.tree Action .main_pane.wave SetMenuState {{can_open {::Vsimmenu::MenuItemCan .mBar.file Open...}} {can_close_file {::Vsimmenu::MenuItemCan .mBar.file {Close Project}}} {can_save {::Vsimmenu::MenuItemCan .mBar.file Save}} {can_saveas {::Vsimmenu::MenuItemCan .mBar.file {Save As...}}} {can_report {::Vsimmenu::MenuItemCan .mBar.file Report...}} {can_use_source_file {::Vsimmenu::MenuItemCan .mBar.file {Use Source...}}} {can_environment {::Vsimmenu::MenuItemCan .mBar.file Environment}} {can_page_setup {::Vsimmenu::MenuItemCan .mBar.file {Page Setup...}}} {can_print {::Vsimmenu::MenuItemCan .mBar.file Print...}} {can_print_postscript {::Vsimmenu::MenuItemCan .mBar.file {Print Postscript...}}} {can_close_window {::Vsimmenu::MenuItemCan .mBar.file {Close Window}}}}
+#    <3:eval:1: ::namespace inscope ::Wave {.main_pane.wave.interior.cs.body.pw.wf.tree Action} .main_pane.wave SetMenuState {{can_open {::Vsimmenu::MenuItemCan .mBar.file Open...}} {can_close_file {::Vsimmenu::MenuItemCan .mBar.file {Close Project}}} {can_save {::Vsimmenu::MenuItemCan .mBar.file Save}} {can_saveas {::Vsimmenu::MenuItemCan .mBar.file {Save As...}}} {can_report {::Vsimmenu::MenuItemCan .mBar.file Report...}} {can_use_source_file {::Vsimmenu::MenuItemCan .mBar.file {Use Source...}}} {can_environment {::Vsimmenu::MenuItemCan .mBar.file Environment}} {can_page_setup {::Vsimmenu::MenuItemCan .mBar.file {Page Setup...}}} {can_print {::Vsimmenu::MenuItemCan .mBar.file Print...}} {can_print_postscript {::Vsimmenu::MenuItemCan .mBar.file {Print Postscript...}}} {can_close_window {::Vsimmenu::MenuItemCan .mBar.file {Close Window}}}}
+#    >2:eval:1: ::.vcop Action SetMenuState {{can_open {::Vsimmenu::MenuItemCan .mBar.file Open...}} {can_close_file {::Vsimmenu::MenuItemCan .mBar.file {Close Project}}} {can_save {::Vsimmenu::MenuItemCan .mBar.file Save}} {can_saveas {::Vsimmenu::MenuItemCan .mBar.file {Save As...}}} {can_report {::Vsimmenu::MenuItemCan .mBar.file Report...}} {can_use_source_file {::Vsimmenu::MenuItemCan .mBar.file {Use Source...}}} {can_environment {::Vsimmenu::MenuItemCan .mBar.file Environment}} {can_page_setup {::Vsimmenu::MenuItemCan .mBar.file {Page Setup...}}} {can_print {::Vsimmenu::MenuItemCan .mBar.file Print...}} {can_print_postscript {::Vsimmenu::MenuItemCan .mBar.file {Print Postscript...}}} {can_close_window {::Vsimmenu::MenuItemCan .mBar.file {Close Window}}}}
+#    <1:proc:107: ::Vsimmenu::DefaultMenuPostCmd .mBar.file {FileMenuPostCmd .mBar.file} SetMenuState
+# WARNING: No extended dataflow license exists
+# Trace back: Error QStructure::sort: invalid command name ""
+#   <6:C:/mtitcl/vsim/qstructure.tc_:2478: ::QStructure::sort .main_pane.structure 2 ascending
+#   <5:eval:1: ::QStructure::structsort .main_pane.structure 2 ascending
+#   <4:eval:1: ::namespace inscope ::QStructure {structsort .main_pane.structure} 2 ascending
+#   >3:proc:26: ::.main_pane.structure.interior.cs.body.struct sort 2 ascending
+#   >2:proc:10: ::.main_pane.structure.interior.cs.body.struct _initializeSortColumn
+#   <1:eval:1: ::namespace inscope ::vsimwidgets::Hierarchy {::.main_pane.structure.interior.cs.body.struct _initializeSortColumn}
+vsim -gui work.tb_bitcoin_hash
+# End time: 13:31:39 on Jun 06,2022, Elapsed time: 0:00:41
+# Errors: 0, Warnings: 1
+# vsim -gui work.tb_bitcoin_hash 
+# Start time: 13:31:39 on Jun 06,2022
+# Loading sv_std.std
+# Loading work.tb_bitcoin_hash
+# Loading work.bitcoin_hash
+# Loading work.bitcoin_sha256_single
+# WARNING: No extended dataflow license exists
+run -all
+# ---------------
+# 19 WORD HEADER:
+# ---------------
+# 01234567
+# 02468ace
+# 048d159c
+# 091a2b38
+# 12345670
+# 2468ace0
+# 48d159c0
+# 91a2b380
+# 23456701
+# 468ace02
+# 8d159c04
+# 1a2b3809
+# 34567012
+# 68ace024
+# d159c048
+# a2b38091
+# 45670123
+# 8ace0246
+# 159c048d
+# ***************************
+# 
+# first block of hash being computed 
+# second block of hash being computed 
+# second  hash being computed 
+# waiting until done 
+# ---------------------
+# COMPARE HASH RESULTS:
+# ---------------------
+# Correct H0[ 0] = 7106973a	Your H0[ 0] = 7106973a
+# Correct H0[ 1] = 6e66eea7	Your H0[ 1] = 6e66eea7
+# Correct H0[ 2] = fbef64dc	Your H0[ 2] = fbef64dc
+# Correct H0[ 3] = 0888a18c	Your H0[ 3] = 0888a18c
+# Correct H0[ 4] = 9642d5aa	Your H0[ 4] = 9642d5aa
+# Correct H0[ 5] = 2ab6af8b	Your H0[ 5] = 2ab6af8b
+# Correct H0[ 6] = 24259d8c	Your H0[ 6] = 24259d8c
+# Correct H0[ 7] = ffb9bcd9	Your H0[ 7] = ffb9bcd9
+# Correct H0[ 8] = 642138c9	Your H0[ 8] = 642138c9
+# Correct H0[ 9] = 054cafc7	Your H0[ 9] = 054cafc7
+# Correct H0[10] = 78251a17	Your H0[10] = 78251a17
+# Correct H0[11] = af8c8f22	Your H0[11] = af8c8f22
+# Correct H0[12] = d7a79ef8	Your H0[12] = d7a79ef8
+# Correct H0[13] = c7d10c84	Your H0[13] = c7d10c84
+# Correct H0[14] = 9537acfd	Your H0[14] = 9537acfd
+# Correct H0[15] = c1e4c72b	Your H0[15] = c1e4c72b
+# ***************************
+# 
+# CONGRATULATIONS! All your hash results are correct!
+# 
+# Total number of cycles:         419
+# 
+# 
+# ***************************
+# 
+# ** Note: $stop    : C:/Users/Anoop/Documents/ECE 111/Final Project/Project Files/bitcoin_hash/tb_bitcoin_hash.sv(337)
+#    Time: 8430 ps  Iteration: 2  Instance: /tb_bitcoin_hash
+# Break in Module tb_bitcoin_hash at C:/Users/Anoop/Documents/ECE 111/Final Project/Project Files/bitcoin_hash/tb_bitcoin_hash.sv line 337
+restart -f
+add wave sim:/tb_bitcoin_hash/*
+run -all
+# ---------------
+# 19 WORD HEADER:
+# ---------------
+# 01234567
+# 02468ace
+# 048d159c
+# 091a2b38
+# 12345670
+# 2468ace0
+# 48d159c0
+# 91a2b380
+# 23456701
+# 468ace02
+# 8d159c04
+# 1a2b3809
+# 34567012
+# 68ace024
+# d159c048
+# a2b38091
+# 45670123
+# 8ace0246
+# 159c048d
+# ***************************
+# 
+# first block of hash being computed 
+# second block of hash being computed 
+# second  hash being computed 
+# waiting until done 
+# ---------------------
+# COMPARE HASH RESULTS:
+# ---------------------
+# Correct H0[ 0] = 7106973a	Your H0[ 0] = 7106973a
+# Correct H0[ 1] = 6e66eea7	Your H0[ 1] = 6e66eea7
+# Correct H0[ 2] = fbef64dc	Your H0[ 2] = fbef64dc
+# Correct H0[ 3] = 0888a18c	Your H0[ 3] = 0888a18c
+# Correct H0[ 4] = 9642d5aa	Your H0[ 4] = 9642d5aa
+# Correct H0[ 5] = 2ab6af8b	Your H0[ 5] = 2ab6af8b
+# Correct H0[ 6] = 24259d8c	Your H0[ 6] = 24259d8c
+# Correct H0[ 7] = ffb9bcd9	Your H0[ 7] = ffb9bcd9
+# Correct H0[ 8] = 642138c9	Your H0[ 8] = 642138c9
+# Correct H0[ 9] = 054cafc7	Your H0[ 9] = 054cafc7
+# Correct H0[10] = 78251a17	Your H0[10] = 78251a17
+# Correct H0[11] = af8c8f22	Your H0[11] = af8c8f22
+# Correct H0[12] = d7a79ef8	Your H0[12] = d7a79ef8
+# Correct H0[13] = c7d10c84	Your H0[13] = c7d10c84
+# Correct H0[14] = 9537acfd	Your H0[14] = 9537acfd
+# Correct H0[15] = c1e4c72b	Your H0[15] = c1e4c72b
+# ***************************
+# 
+# CONGRATULATIONS! All your hash results are correct!
+# 
+# Total number of cycles:         419
+# 
+# 
+# ***************************
+# 
+# ** Note: $stop    : C:/Users/Anoop/Documents/ECE 111/Final Project/Project Files/bitcoin_hash/tb_bitcoin_hash.sv(337)
+#    Time: 8430 ps  Iteration: 2  Instance: /tb_bitcoin_hash
+# Break in Module tb_bitcoin_hash at C:/Users/Anoop/Documents/ECE 111/Final Project/Project Files/bitcoin_hash/tb_bitcoin_hash.sv line 337
